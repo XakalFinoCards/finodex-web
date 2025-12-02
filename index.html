@@ -1,39 +1,8 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Finodex</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <script type="importmap">
-      {
-        "imports": {
-          "react": "https://esm.sh/react@18.2.0",
-          "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-          "lucide-react": "https://esm.sh/lucide-react@0.263.1"
-        }
-      }
-    </script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
-    <style>
-        body { background-color: #0f0f0f; }
-    </style>
-</head>
-<body>
-
-    <div id="root"></div>
-
-    <script type="text/babel" data-type="module">
+<script type="text/babel" data-type="module">
         import React, { useState, useRef, useEffect } from 'react';
         import { createRoot } from 'react-dom/client';
-        import { Upload, FileJson, Search, ExternalLink, RefreshCw, AlertCircle, Filter } from 'lucide-react';
+        import { Upload, FileJson, Search, ExternalLink, RefreshCw, AlertCircle, Filter, ChevronDown } from 'lucide-react';
 
-        // Datos por defecto (fallback)
-        const DEFAULT_DATA = [];
-
-        // Hook para subir archivos manualmente (por si acaso)
         const useFileUpload = (setCards, setError) => {
             const fileInputRef = useRef(null);
             const handleFileChange = (event) => {
@@ -68,12 +37,21 @@
                      style={{ aspectRatio: '44/67', backgroundColor: '#1a1a1a', border: `2px solid ${PRIMARY_RED}` }}>
                     <div className="absolute inset-0 w-full h-full bg-black">
                         {imageSrc ? (
-                            <iframe src={imageSrc} className="w-full h-full pointer-events-none" frameBorder="0" title={name} />
+                            <iframe 
+                                src={imageSrc} 
+                                className="w-full h-full pointer-events-none" 
+                                frameBorder="0" 
+                                title={name}
+                                loading="lazy" 
+                            />
                         ) : (
                             <div className="flex items-center justify-center h-full text-gray-500">Sin Imagen</div>
                         )}
                     </div>
-                    <div className="absolute inset-0 bg-black/95 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-between p-4 z-20">
+                    {/* Capa invisible para capturar el click en móvil y mostrar stats */}
+                    <div className="absolute inset-0 z-10"></div>
+                    
+                    <div className="absolute inset-0 bg-black/95 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-between p-4 z-20 pointer-events-none group-hover:pointer-events-auto">
                         <div className="flex justify-center mb-2">
                             <span className="px-3 py-1 text-xs font-bold uppercase rounded-full shadow-md tracking-wider"
                                   style={{ backgroundColor: PRIMARY_RED, color: ACCENT_YELLOW }}>
@@ -102,7 +80,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div className="pt-2 border-t border-gray-800 text-center">
+                        <div className="pt-2 border-t border-gray-800 text-center pointer-events-auto">
                             {link && (
                                 <a href={link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-xs hover:underline transition-colors" style={{ color: '#fff' }}>
                                     <ExternalLink size={12} className="mr-1" /> Primera Aparición
@@ -119,11 +97,14 @@
             const [searchTerm, setSearchTerm] = useState("");
             const [selectedRarity, setSelectedRarity] = useState(null);
             const [error, setError] = useState(null);
+            
+            // ESTADO NUEVO: Cuántas cartas mostramos al principio
+            const [visibleCount, setVisibleCount] = useState(12);
+            
             const { fileInputRef, handleFileChange } = useFileUpload(setCards, setError);
             const PRIMARY_RED = '#c1272d';
             const ACCENT_YELLOW = '#ffe000';
 
-            // --- CARGA AUTOMÁTICA DEL JSON ---
             useEffect(() => {
                 fetch('./cards.json')
                     .then(res => {
@@ -131,13 +112,16 @@
                         return res.json();
                     })
                     .then(data => setCards(data))
-                    .catch(err => {
-                        console.log("Esperando archivo JSON...");
-                        // No mostramos error invasivo, simplemente esperamos
-                    });
+                    .catch(err => console.log("Esperando archivo JSON..."));
             }, []);
 
+            // Cuando cambiamos filtros, reseteamos el contador para ver las primeras 12 de la nueva búsqueda
+            useEffect(() => {
+                setVisibleCount(12);
+            }, [searchTerm, selectedRarity]);
+
             const rarities = [...new Set(cards.map(card => card["Rareza"] || "Sin Rareza"))].sort();
+            
             const filteredCards = cards.filter(card => {
                 const name = card["Finoler"]?.toLowerCase() || "";
                 const cardRarity = card["Rareza"] || "Sin Rareza";
@@ -146,6 +130,9 @@
                 const matchesRarity = selectedRarity ? cardRarity === selectedRarity : true;
                 return matchesName && matchesRarity;
             });
+
+            // AQUÍ ESTÁ EL TRUCO: Solo "pintamos" las visibles
+            const visibleCards = filteredCards.slice(0, visibleCount);
 
             return (
                 <div className="min-h-screen font-sans text-white selection:bg-[#c1272d] selection:text-white" style={{ backgroundColor: '#0f0f0f' }}>
@@ -160,7 +147,7 @@
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Search size={18} className="text-gray-400" /></div>
                                     <input type="text" placeholder="Buscar Finoler..." className="w-full bg-gray-900 border border-gray-700 text-white text-sm rounded-full block pl-10 p-2.5" style={{ outlineColor: PRIMARY_RED }} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                                 </div>
-                                <div className="hidden md:block text-xs text-gray-500">v1.0</div>
+                                <div className="hidden md:block text-xs text-gray-500">v1.1 (Mobile Optimized)</div>
                             </div>
                             {cards.length > 0 && (
                                 <div className="flex flex-wrap gap-2 justify-center md:justify-start pt-2 border-t border-gray-800/50">
@@ -180,10 +167,27 @@
                                 <p className="text-gray-500 mb-6">Asegúrate de que 'cards.json' está subido junto a este archivo.</p>
                             </div>
                         )}
+                        
                         {cards.length > 0 && (
-                            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-                                {filteredCards.map((card, index) => <Card key={index} data={card} />)}
-                            </div>
+                            <>
+                                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                                    {visibleCards.map((card, index) => <Card key={index} data={card} />)}
+                                </div>
+
+                                {/* BOTÓN DE CARGAR MÁS */}
+                                {visibleCount < filteredCards.length && (
+                                    <div className="flex justify-center mt-12">
+                                        <button 
+                                            onClick={() => setVisibleCount(prev => prev + 12)}
+                                            className="flex items-center gap-2 px-8 py-3 rounded-full font-bold text-sm transition-transform hover:scale-105 active:scale-95 shadow-[0_0_15px_rgba(193,39,45,0.4)]"
+                                            style={{ backgroundColor: '#1a1a1a', border: `2px solid ${PRIMARY_RED}`, color: 'white' }}
+                                        >
+                                            <ChevronDown size={20} />
+                                            Cargar más Finolers ({filteredCards.length - visibleCount} restantes)
+                                        </button>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </main>
                     <footer className="border-t border-gray-800 mt-12 py-6 text-center text-gray-600 text-sm"><p>Finodex Generador &copy; {new Date().getFullYear()}</p></footer>
@@ -194,5 +198,3 @@
         const root = createRoot(document.getElementById('root'));
         root.render(<FinodexApp />);
     </script>
-</body>
-</html>
