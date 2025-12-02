@@ -142,4 +142,103 @@
             useEffect(() => {
                 fetch('./cards.json')
                     .then(res => {
-                        if (!res.ok) throw new
+                        if (!res.ok) throw new Error("No se encontró cards.json");
+                        return res.json();
+                    })
+                    .then(data => setCards(data))
+                    .catch(err => console.log("Esperando archivo JSON..."));
+            }, []);
+
+            // Resetear el contador al filtrar para evitar errores visuales
+            useEffect(() => {
+                setVisibleCount(12);
+            }, [searchTerm, selectedRarity]);
+
+            const rarities = [...new Set(cards.map(card => card["Rareza"] || "Sin Rareza"))].sort();
+            
+            const filteredCards = cards.filter(card => {
+                const name = card["Finoler"]?.toLowerCase() || "";
+                const cardRarity = card["Rareza"] || "Sin Rareza";
+                const search = searchTerm.toLowerCase();
+                const matchesName = name.includes(search);
+                const matchesRarity = selectedRarity ? cardRarity === selectedRarity : true;
+                return matchesName && matchesRarity;
+            });
+
+            // Cortamos la lista para mostrar solo las que tocan
+            const visibleCards = filteredCards.slice(0, visibleCount);
+
+            return (
+                <div className="min-h-screen font-sans text-white selection:bg-[#c1272d] selection:text-white" style={{ backgroundColor: '#0f0f0f' }}>
+                    <header className="border-b border-gray-800 bg-black/50 backdrop-blur-md sticky top-0 z-50">
+                        <div className="max-w-7xl mx-auto px-4 py-4">
+                            <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded flex items-center justify-center font-black text-2xl transform -skew-x-12 shadow-lg" style={{ backgroundColor: PRIMARY_RED, color: ACCENT_YELLOW }}>F</div>
+                                    <h1 className="text-3xl font-extrabold tracking-tight uppercase" style={{ color: 'white' }}>Fino<span style={{ color: PRIMARY_RED }}>dex</span></h1>
+                                </div>
+                                <div className="relative w-full md:w-96">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Search size={18} className="text-gray-400" /></div>
+                                    <input type="text" placeholder="Buscar Finoler..." className="w-full bg-gray-900 border border-gray-700 text-white text-sm rounded-full block pl-10 p-2.5" style={{ outlineColor: PRIMARY_RED }} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                                </div>
+                                <div className="hidden md:block text-xs text-gray-500">v1.2 Mobile</div>
+                            </div>
+                            {cards.length > 0 && (
+                                <div className="flex flex-wrap gap-2 justify-center md:justify-start pt-2 border-t border-gray-800/50">
+                                    <button onClick={() => setSelectedRarity(null)} className={`px-3 py-1 rounded-full text-xs font-bold uppercase border ${selectedRarity === null ? 'bg-[#ffe000] text-black border-[#ffe000]' : 'border-gray-700 text-gray-400'}`}>Todos</button>
+                                    {rarities.map((rarity) => (
+                                        <button key={rarity} onClick={() => setSelectedRarity(rarity === selectedRarity ? null : rarity)} className={`px-3 py-1 rounded-full text-xs font-bold uppercase border ${selectedRarity === rarity ? 'bg-[#c1272d] text-white border-[#c1272d]' : 'border-gray-700 text-gray-400'}`}>{rarity}</button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </header>
+                    <main className="max-w-7xl mx-auto px-4 py-8">
+                        {/* ESTADO VACÍO */}
+                        {cards.length === 0 && (
+                            <div className="text-center py-20 border-2 border-dashed border-gray-700 rounded-xl">
+                                <FileJson size={48} className="mx-auto text-gray-500 mb-4" />
+                                <h2 className="text-xl font-bold text-gray-300">Cargando colección...</h2>
+                                <p className="text-gray-500 mb-6">Asegúrate de que 'cards.json' está en la misma carpeta.</p>
+                            </div>
+                        )}
+                        
+                        {/* GRID DE CARTAS */}
+                        {cards.length > 0 && (
+                            <>
+                                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                                    {visibleCards.map((card, index) => <Card key={index} data={card} />)}
+                                </div>
+
+                                {/* BOTÓN CARGAR MÁS */}
+                                {visibleCount < filteredCards.length && (
+                                    <div className="flex justify-center mt-12 pb-10">
+                                        <button 
+                                            onClick={() => setVisibleCount(prev => prev + 12)}
+                                            className="btn-load flex items-center gap-2 px-8 py-3 rounded-full font-bold text-sm transition-transform hover:scale-105 shadow-[0_0_15px_rgba(193,39,45,0.4)] cursor-pointer"
+                                            style={{ backgroundColor: '#1a1a1a', border: `2px solid ${PRIMARY_RED}`, color: 'white' }}
+                                        >
+                                            <ChevronDown size={20} />
+                                            Cargar más ({filteredCards.length - visibleCount} restantes)
+                                        </button>
+                                    </div>
+                                )}
+                                
+                                {filteredCards.length === 0 && (
+                                    <div className="text-center text-gray-500 py-10">
+                                        No se encontraron Finolers con esos filtros.
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </main>
+                    <footer className="border-t border-gray-800 mt-0 py-6 text-center text-gray-600 text-sm"><p>Finodex Generador &copy; {new Date().getFullYear()}</p></footer>
+                </div>
+            );
+        }
+
+        const root = createRoot(document.getElementById('root'));
+        root.render(<FinodexApp />);
+    </script>
+</body>
+</html>
